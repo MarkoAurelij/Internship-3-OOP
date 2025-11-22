@@ -1,0 +1,17 @@
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.tmp
+*.log
+
+# Build results
+bin/
+obj/
+
+# Rider
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
