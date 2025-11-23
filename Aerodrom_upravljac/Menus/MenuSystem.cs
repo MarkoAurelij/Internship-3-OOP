@@ -34,7 +34,7 @@ namespace AirportManagement.Menus
             while (running)
             {
                 Console.Clear();
-                Console.WriteLine("=== MAIN MENU ===");
+                Console.WriteLine("MAIN MENU");
                 Console.WriteLine("1 - Passengers");
                 Console.WriteLine("2 - Flights");
                 Console.WriteLine("3 - Planes");
@@ -263,21 +263,18 @@ namespace AirportManagement.Menus
             do
             {
                 Console.Clear();
-                Console.WriteLine("Select a Plane (Use ← / → keys, Enter to confirm):");
-                int visibleCount = Math.Min(3, planes.Count);
-                int start = Math.Max(0, planeIndex - 1);
-                int end = Math.Min(planes.Count, start + visibleCount);
-
-                for (int i = start; i < end; i++)
+                Console.WriteLine("Select a Plane (Use <- / -> keys, Enter to confirm):");
+                for (int i = 0; i < planes.Count; i++)
                 {
-                    Console.Write(i == planeIndex ? "> " : "  ");
+                    var prefix = i == planeIndex ? "> " : "  ";
                     var p = planes[i];
-                    Console.WriteLine($"{i + 1} - {p.Name} ({p.YearOfProduction}) - Seats: {string.Join(", ", p.Seats.Keys)}");
+                    Console.WriteLine($"{prefix}{i + 1} - {p.Name} ({p.YearOfProduction}) - Seats: {string.Join(", ", p.Seats.Keys)}");
                 }
 
                 key = Console.ReadKey(true).Key;
-                if (key == ConsoleKey.RightArrow) planeIndex = (planeIndex + 1) % planes.Count;
-                if (key == ConsoleKey.LeftArrow) planeIndex = (planeIndex - 1 + planes.Count) % planes.Count;
+                if (key == ConsoleKey.DownArrow) planeIndex = (planeIndex + 1) % planes.Count;
+                if (key == ConsoleKey.UpArrow) planeIndex = (planeIndex - 1 + planes.Count) % planes.Count;
+
             } while (key != ConsoleKey.Enter);
 
             Plane selectedPlane = planes[planeIndex];
@@ -291,33 +288,49 @@ namespace AirportManagement.Menus
             }
 
             List<CrewMember> selectedCrew = new List<CrewMember>();
-            int crewStartIndex = 0;
-            const int crewVisible = 5;
+            int crewIndex = 0;
             bool crewSelecting = true;
 
             while (crewSelecting)
             {
                 Console.Clear();
-                Console.WriteLine("Select Crew Members (Space to select/deselect, Enter to confirm, arrows to scroll):");
-                int crewEndIndex = Math.Min(allCrew.Count, crewStartIndex + crewVisible);
+                Console.WriteLine("Select Crew Members (Space to toggle, Enter to confirm):");
+                Console.WriteLine("Role limits: 1 Pilot, 1 CoPilot, others unlimited\n");
 
-                for (int i = crewStartIndex; i < crewEndIndex; i++)
+                for (int i = 0; i < allCrew.Count; i++)
                 {
                     var c = allCrew[i];
                     string marker = selectedCrew.Contains(c) ? "[X]" : "[ ]";
-                    Console.WriteLine($"{i + 1} {marker} {c.FirstName} {c.LastName} ({c.CrewPosition})");
+                    string prefix = i == crewIndex ? "> " : "  ";
+                    Console.WriteLine($"{prefix}{i + 1} {marker} {c.FirstName} {c.LastName} ({c.CrewPosition})");
                 }
 
                 var cKey = Console.ReadKey(true).Key;
-                if (cKey == ConsoleKey.DownArrow && crewStartIndex + crewVisible < allCrew.Count) crewStartIndex++;
-                if (cKey == ConsoleKey.UpArrow && crewStartIndex > 0) crewStartIndex--;
+
+                if (cKey == ConsoleKey.DownArrow && crewIndex < allCrew.Count - 1) crewIndex++;
+                if (cKey == ConsoleKey.UpArrow && crewIndex > 0) crewIndex--;
                 if (cKey == ConsoleKey.Enter) crewSelecting = false;
 
                 if (cKey == ConsoleKey.Spacebar)
                 {
-                    var firstVisible = allCrew[crewStartIndex];
-                    if (selectedCrew.Contains(firstVisible)) selectedCrew.Remove(firstVisible);
-                    else selectedCrew.Add(firstVisible);
+                    var member = allCrew[crewIndex];
+
+                    if (selectedCrew.Contains(member))
+                    {
+                        selectedCrew.Remove(member);
+                    }
+                    else
+                    {
+                        if (member.CrewPosition == Position.Pilot && selectedCrew.Any(c => c.CrewPosition == Position.Pilot))
+                        {
+                            selectedCrew.RemoveAll(c => c.CrewPosition == Position.Pilot);
+                        }
+                        if (member.CrewPosition == Position.CoPilot && selectedCrew.Any(c => c.CrewPosition == Position.CoPilot))
+                        {
+                            selectedCrew.RemoveAll(c => c.CrewPosition == Position.CoPilot);
+                        }
+                        selectedCrew.Add(member);
+                    }
                 }
             }
 
@@ -327,6 +340,8 @@ namespace AirportManagement.Menus
             Console.WriteLine($"\nFlight '{name}' added successfully!");
             MenuHelpers.Wait();
         }
+
+
 
         private void ListFlights()
         {
