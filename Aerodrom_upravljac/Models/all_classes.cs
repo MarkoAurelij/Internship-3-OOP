@@ -11,6 +11,18 @@ namespace AirportManagement.Models
         Steward,
         Stewardess
     }
+    public class Crew
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        public CrewMember Pilot { get; set; }
+        public CrewMember CoPilot { get; set; }
+        public CrewMember Steward1 { get; set; }
+        public CrewMember Steward2 { get; set; }
+
+        public string Name => $"{Pilot.LastName}/{CoPilot.LastName} Crew";
+    }
+
 
     public class CrewMember
     {
@@ -48,14 +60,14 @@ namespace AirportManagement.Models
 
     public class Passenger
     {
-        public Guid Id { get; private set; }
+        public Guid Id { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public int YearOfBirth { get; set; }
         public string Email { get; set; }
         public string Password { get; set; }
-        public DateTime CreatedAt { get; private set; }
-        public DateTime LastModified { get; private set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime LastModified { get; set; }
 
         public Passenger(string firstName, string lastName, int yearOfBirth, string email, string password)
         {
@@ -79,6 +91,7 @@ namespace AirportManagement.Models
             Console.WriteLine($"{FirstName} {LastName}, Born: {YearOfBirth}, Email: {Email}");
         }
     }
+
 
     public class Plane
     {
@@ -114,6 +127,7 @@ namespace AirportManagement.Models
         }
     }
 
+
     public class Flight
     {
         public Guid Id { get; private set; }
@@ -125,12 +139,15 @@ namespace AirportManagement.Models
         public double Distance { get; set; }
         public double Duration => (Arrival - Departure).TotalHours;
         public Plane Plane { get; set; }
-        public List<CrewMember> Crew { get; set; } = new List<CrewMember>();
+        public Crew Crew { get; set; }
+
         public List<Passenger> Passengers { get; private set; } = new List<Passenger>();
         public DateTime CreatedAt { get; private set; }
         public DateTime LastModified { get; private set; }
 
-        public Flight(string name, string origin, string destination, DateTime departure, DateTime arrival, double distance, Plane plane, List<CrewMember> crew)
+        public Flight(string name, string origin, string destination,
+              DateTime departure, DateTime arrival,
+              double distance, Plane plane, Crew crew)
         {
             Name = name;
             Origin = origin;
@@ -140,10 +157,9 @@ namespace AirportManagement.Models
             Distance = distance;
             Plane = plane;
             Crew = crew;
-            Id = Guid.NewGuid();
-            CreatedAt = DateTime.Now;
-            LastModified = DateTime.Now;
         }
+
+
 
         public void UpdateModification()
         {
@@ -163,7 +179,10 @@ namespace AirportManagement.Models
 
         public void DisplayInfo()
         {
-            Console.WriteLine($"[{Id}] {Name}: {Origin} -> {Destination}, Departure: {Departure}, Arrival: {Arrival}, Distance: {Distance} km, Passengers: {Passengers.Count}/{Plane.Seats.Values.Sum()}, Crew: {Crew.Count}");
+            string crewInfo = Crew != null ? Crew.Name : "No crew assigned";
+            int totalSeats = Plane?.Seats.Values.Sum() ?? 0;
+            Console.WriteLine($"[{Id}] {Name}: {Origin} -> {Destination}, Departure: {Departure}, Arrival: {Arrival}, Distance: {Distance} km, Passengers: {Passengers.Count}/{totalSeats}, Crew: {crewInfo}");
         }
+
     }
 }

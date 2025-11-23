@@ -46,7 +46,7 @@ namespace AirportManagement.Menus
                 switch (choice)
                 {
                     case "1":
-                        new PassengerMenu(_passengerManager).Show();
+                        new PassengerMenu(_passengerManager, _flightManager).Show();
                         break;
                     case "2":
                         new FlightMenu(_flightManager, _planeManager, _crewManager).Show();
@@ -72,7 +72,15 @@ namespace AirportManagement.Menus
     public class PassengerMenu
     {
         private readonly PassengerManager _manager;
-        public PassengerMenu(PassengerManager manager) { _manager = manager; }
+        private readonly FlightManager _flightManager;
+        private Passenger _currentPassenger;
+
+        public PassengerMenu(PassengerManager manager, FlightManager flightManager)
+        {
+            _manager = manager;
+            _flightManager = flightManager;
+        }
+
         private void RegisterPassenger()
         {
             Console.Clear();
@@ -122,6 +130,7 @@ namespace AirportManagement.Menus
             Console.WriteLine($"\nPassenger '{firstName} {lastName}' registered successfully!");
             MenuHelpers.Wait();
         }
+
         private void ListPassengers()
         {
             Console.Clear();
@@ -144,6 +153,84 @@ namespace AirportManagement.Menus
             MenuHelpers.Wait();
         }
 
+        private void LoginPassenger()
+        {
+            Console.Clear();
+            Console.WriteLine("PASSENGER LOGIN");
+
+            Console.Write("Email: ");
+            string email = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(email)) return;
+
+            Console.Write("Password: ");
+            string password = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(password)) return;
+
+            var passenger = _manager.Login(email, password);
+            if (passenger != null)
+            {
+                _currentPassenger = passenger;
+                Console.WriteLine($"\nWelcome {passenger.FirstName} {passenger.LastName}!");
+                MenuHelpers.Wait();
+            }
+            else
+            {
+                Console.WriteLine("\nInvalid email or password. Try again.");
+                MenuHelpers.Wait();
+            }
+        }
+
+        private void BookFlight()
+        {
+            if (_currentPassenger == null)
+            {
+                Console.WriteLine("You must be logged in to book a flight.");
+                MenuHelpers.Wait();
+                return;
+            }
+
+            var flights = _flightManager.GetAllFlights();
+            if (flights.Count == 0)
+            {
+                Console.WriteLine("No flights available.");
+                MenuHelpers.Wait();
+                return;
+            }
+
+            Console.Clear();
+            Console.WriteLine("AVAILABLE FLIGHTS");
+
+            for (int i = 0; i < flights.Count; i++)
+            {
+                var f = flights[i];
+                int totalSeats = f.Plane?.Seats.Values.Sum() ?? 0;
+                Console.WriteLine($"{i + 1} - {f.Name}: {f.Origin} -> {f.Destination}, Seats: {f.Passengers.Count}/{totalSeats}");
+            }
+
+            Console.Write("\nChoose flight number to book (Enter to cancel): ");
+            string input = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(input)) return;
+
+            if (!int.TryParse(input, out int flightIndex) || flightIndex < 1 || flightIndex > flights.Count)
+            {
+                Console.WriteLine("Invalid selection.");
+                MenuHelpers.Wait();
+                return;
+            }
+
+            var selectedFlight = flights[flightIndex - 1];
+            if (!selectedFlight.HasCapacity())
+            {
+                Console.WriteLine("Selected flight is fully booked.");
+                MenuHelpers.Wait();
+                return;
+            }
+
+            selectedFlight.Passengers.Add(_currentPassenger);
+            Console.WriteLine($"Successfully booked flight '{selectedFlight.Name}' for {_currentPassenger.FirstName} {_currentPassenger.LastName}!");
+            MenuHelpers.Wait();
+        }
+
         public void Show()
         {
             bool running = true;
@@ -152,22 +239,20 @@ namespace AirportManagement.Menus
                 Console.Clear();
                 Console.WriteLine("PASSENGER MENU");
                 Console.WriteLine("1 - Register Passenger");
-                Console.WriteLine("2 - List Passengers");
-                Console.WriteLine("3 - Back");
+                Console.WriteLine("2 - Login Passenger");
+                Console.WriteLine("3 - List Passengers");
+                Console.WriteLine("4 - Book Flight");
+                Console.WriteLine("5 - Back");
                 Console.Write("Choice: ");
                 string choice = Console.ReadLine();
 
                 switch (choice)
                 {
-                    case "1":
-                        RegisterPassenger();
-                        break;
-                    case "2":
-                        ListPassengers();
-                        break;
-                    case "3":
-                        running = false;
-                        break;
+                    case "1": RegisterPassenger(); break;
+                    case "2": LoginPassenger(); break;
+                    case "3": ListPassengers(); break;
+                    case "4": BookFlight(); break;
+                    case "5": running = false; break;
                     default:
                         Console.WriteLine("Invalid option.");
                         MenuHelpers.Wait();
@@ -176,6 +261,7 @@ namespace AirportManagement.Menus
             }
         }
     }
+
 
 
     public class FlightMenu
@@ -263,7 +349,7 @@ namespace AirportManagement.Menus
             do
             {
                 Console.Clear();
-                Console.WriteLine("Select a Plane (Use <- / -> keys, Enter to confirm):");
+                Console.WriteLine("Select a Plane (Use Up/Down keys, Enter to confirm):");
                 for (int i = 0; i < planes.Count; i++)
                 {
                     var prefix = i == planeIndex ? "> " : "  ";
@@ -279,60 +365,35 @@ namespace AirportManagement.Menus
 
             Plane selectedPlane = planes[planeIndex];
 
-            var allCrew = _crewManager.GetAllCrewMembers();
-            if (allCrew.Count == 0)
+            var allCrews = _crewManager.GetAllCrews();
+            if (allCrews.Count == 0)
             {
-                Console.WriteLine("No crew members available. Cannot create flight.");
+                Console.WriteLine("No crews available. Cannot create flight.");
                 MenuHelpers.Wait();
                 return;
             }
 
-            List<CrewMember> selectedCrew = new List<CrewMember>();
             int crewIndex = 0;
-            bool crewSelecting = true;
-
-            while (crewSelecting)
+            bool selectingCrew = true;
+            do
             {
                 Console.Clear();
-                Console.WriteLine("Select Crew Members (Space to toggle, Enter to confirm):");
-                Console.WriteLine("Role limits: 1 Pilot, 1 CoPilot, others unlimited\n");
-
-                for (int i = 0; i < allCrew.Count; i++)
+                Console.WriteLine("Select Crew (Use Up/Down keys, Enter to confirm):");
+                for (int i = 0; i < allCrews.Count; i++)
                 {
-                    var c = allCrew[i];
-                    string marker = selectedCrew.Contains(c) ? "[X]" : "[ ]";
-                    string prefix = i == crewIndex ? "> " : "  ";
-                    Console.WriteLine($"{prefix}{i + 1} {marker} {c.FirstName} {c.LastName} ({c.CrewPosition})");
+                    var prefix = i == crewIndex ? "> " : "  ";
+                    var crew = allCrews[i];
+                    Console.WriteLine($"{prefix}{i + 1} - {crew.Name}");
                 }
 
-                var cKey = Console.ReadKey(true).Key;
+                key = Console.ReadKey(true).Key;
+                if (key == ConsoleKey.DownArrow && crewIndex < allCrews.Count - 1) crewIndex++;
+                if (key == ConsoleKey.UpArrow && crewIndex > 0) crewIndex--;
+                if (key == ConsoleKey.Enter) selectingCrew = false;
 
-                if (cKey == ConsoleKey.DownArrow && crewIndex < allCrew.Count - 1) crewIndex++;
-                if (cKey == ConsoleKey.UpArrow && crewIndex > 0) crewIndex--;
-                if (cKey == ConsoleKey.Enter) crewSelecting = false;
+            } while (selectingCrew);
 
-                if (cKey == ConsoleKey.Spacebar)
-                {
-                    var member = allCrew[crewIndex];
-
-                    if (selectedCrew.Contains(member))
-                    {
-                        selectedCrew.Remove(member);
-                    }
-                    else
-                    {
-                        if (member.CrewPosition == Position.Pilot && selectedCrew.Any(c => c.CrewPosition == Position.Pilot))
-                        {
-                            selectedCrew.RemoveAll(c => c.CrewPosition == Position.Pilot);
-                        }
-                        if (member.CrewPosition == Position.CoPilot && selectedCrew.Any(c => c.CrewPosition == Position.CoPilot))
-                        {
-                            selectedCrew.RemoveAll(c => c.CrewPosition == Position.CoPilot);
-                        }
-                        selectedCrew.Add(member);
-                    }
-                }
-            }
+            Crew selectedCrew = allCrews[crewIndex];
 
             var flight = new Flight(name, origin, destination, departure, arrival, distance, selectedPlane, selectedCrew);
             _manager.AddFlight(flight);
@@ -340,8 +401,6 @@ namespace AirportManagement.Menus
             Console.WriteLine($"\nFlight '{name}' added successfully!");
             MenuHelpers.Wait();
         }
-
-
 
         private void ListFlights()
         {
@@ -358,7 +417,9 @@ namespace AirportManagement.Menus
                 foreach (var f in flights)
                 {
                     string planeName = f.Plane != null ? f.Plane.Name : "No Plane";
-                    Console.WriteLine($"[{f.Id}] {f.Name}: {f.Origin} -> {f.Destination}, Departure: {f.Departure}, Arrival: {f.Arrival}, Distance: {f.Distance} km, Plane: {planeName}, Crew: {f.Crew.Count}");
+                    string crewName = f.Crew != null ? f.Crew.Name : "No Crew";
+                    int totalSeats = f.Plane?.Seats.Values.Sum() ?? 0;
+                    Console.WriteLine($"[{f.Id}] {f.Name}: {f.Origin} -> {f.Destination}, Departure: {f.Departure}, Arrival: {f.Arrival}, Distance: {f.Distance} km, Plane: {planeName}, Crew: {crewName}, Passengers: {f.Passengers.Count}/{totalSeats}");
                 }
             }
 
@@ -399,10 +460,12 @@ namespace AirportManagement.Menus
     }
 
 
+
     public class PlaneMenu
     {
         private readonly PlaneManager _manager;
         public PlaneMenu(PlaneManager manager) { _manager = manager; }
+
         private void AddPlane()
         {
             Console.Clear();
@@ -419,9 +482,11 @@ namespace AirportManagement.Menus
                 string input = Console.ReadLine();
                 if (string.IsNullOrWhiteSpace(input)) return;
 
-                if (!int.TryParse(input, out year) || year < 1900 || year > DateTime.Now.Year)
+                if (!int.TryParse(input, out year) ||
+                    year < 1900 ||
+                    year > DateTime.Now.Year)
                 {
-                    Console.WriteLine("Invalid year. Must be between 1900 and current year.");
+                    Console.WriteLine("Invalid year. Try again.");
                     continue;
                 }
                 break;
@@ -429,6 +494,7 @@ namespace AirportManagement.Menus
 
             var seats = new Dictionary<string, int>();
             string[] categories = { "Standard", "Business", "VIP" };
+
             foreach (var category in categories)
             {
                 int count;
@@ -440,9 +506,10 @@ namespace AirportManagement.Menus
 
                     if (!int.TryParse(seatInput, out count) || count < 0)
                     {
-                        Console.WriteLine("Invalid number of seats. Must be 0 or positive.");
+                        Console.WriteLine("Invalid seat number.");
                         continue;
                     }
+
                     break;
                 }
                 seats[category] = count;
@@ -454,6 +521,7 @@ namespace AirportManagement.Menus
             Console.WriteLine($"\nPlane '{name}' added successfully!");
             MenuHelpers.Wait();
         }
+
         private void ListPlanes()
         {
             Console.Clear();
@@ -468,12 +536,130 @@ namespace AirportManagement.Menus
             {
                 foreach (var p in planes)
                 {
-                    Console.WriteLine($"[{p.Id}] {p.Name} ({p.YearOfProduction}), Seats: Standard-{p.Seats["Standard"]}, Business-{p.Seats["Business"]}, VIP-{p.Seats["VIP"]}");
+                    Console.WriteLine(
+                        $"[{p.Id}] {p.Name} ({p.YearOfProduction}), " +
+                        $"Seats: Standard-{p.Seats["Standard"]}, " +
+                        $"Business-{p.Seats["Business"]}, VIP-{p.Seats["VIP"]}"
+                    );
                 }
             }
 
             MenuHelpers.Wait();
         }
+
+        private void SearchPlane()
+        {
+            Console.Clear();
+            Console.WriteLine("SEARCH PLANE");
+            Console.WriteLine("1 - By ID");
+            Console.WriteLine("2 - By Name");
+            Console.Write("Choice: ");
+
+            string choice = Console.ReadLine();
+
+            if (choice == "1")
+            {
+                Console.Write("Enter ID: ");
+                string idInput = Console.ReadLine();
+
+                if (Guid.TryParse(idInput, out Guid id))
+                {
+                    var plane = _manager.GetPlaneById(id);
+                    if (plane == null)
+                    {
+                        Console.WriteLine("Plane not found.");
+                    }
+                    else
+                    {
+                        PrintPlaneDetails(plane);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Invalid ID format.");
+                }
+            }
+            else if (choice == "2")
+            {
+                Console.Write("Enter name: ");
+                string name = Console.ReadLine();
+
+                var result = _manager.GetAllPlanes()
+                                     .Where(p => p.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
+                                     .ToList();
+
+                if (result.Count == 0)
+                    Console.WriteLine("No planes match the search criteria.");
+                else
+                    result.ForEach(PrintPlaneDetails);
+            }
+            else
+            {
+                Console.WriteLine("Invalid choice.");
+            }
+
+            MenuHelpers.Wait();
+        }
+
+        private void PrintPlaneDetails(Plane p)
+        {
+            Console.WriteLine($"\n[{p.Id}] {p.Name} ({p.YearOfProduction})");
+            Console.WriteLine($"Seats:");
+            foreach (var kvp in p.Seats)
+                Console.WriteLine($"  {kvp.Key}: {kvp.Value}");
+            Console.WriteLine();
+        }
+
+
+        private void DeletePlane()
+        {
+            Console.Clear();
+            Console.WriteLine("DELETE PLANE");
+            Console.WriteLine("1 - By ID");
+            Console.WriteLine("2 - By Name");
+            Console.Write("Choice: ");
+
+            string choice = Console.ReadLine();
+
+            Plane planeToDelete = null;
+
+            if (choice == "1")
+            {
+                Console.Write("Enter ID: ");
+                string idInput = Console.ReadLine();
+
+                if (Guid.TryParse(idInput, out Guid id))
+                {
+                    planeToDelete = _manager.GetPlaneById(id);
+                }
+            }
+            else if (choice == "2")
+            {
+                Console.Write("Enter Name: ");
+                string name = Console.ReadLine();
+                planeToDelete = _manager.GetAllPlanes()
+                    .FirstOrDefault(p => p.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                Console.WriteLine("Invalid choice.");
+                MenuHelpers.Wait();
+                return;
+            }
+
+            if (planeToDelete == null)
+            {
+                Console.WriteLine("Plane not found.");
+                MenuHelpers.Wait();
+                return;
+            }
+
+            _manager.RemovePlane(planeToDelete);
+
+            Console.WriteLine($"Plane '{planeToDelete.Name}' deleted successfully.");
+            MenuHelpers.Wait();
+        }
+
         public void Show()
         {
             bool running = true;
@@ -483,21 +669,19 @@ namespace AirportManagement.Menus
                 Console.WriteLine("PLANE MENU");
                 Console.WriteLine("1 - Add Plane");
                 Console.WriteLine("2 - List Planes");
-                Console.WriteLine("3 - Back");
+                Console.WriteLine("3 - Search Plane");
+                Console.WriteLine("4 - Delete Plane");
+                Console.WriteLine("5 - Back");
                 Console.Write("Choice: ");
                 string choice = Console.ReadLine();
 
                 switch (choice)
                 {
-                    case "1":
-                        AddPlane();
-                        break;
-                    case "2":
-                        ListPlanes();
-                        break;
-                    case "3":
-                        running = false;
-                        break;
+                    case "1": AddPlane(); break;
+                    case "2": ListPlanes(); break;
+                    case "3": SearchPlane(); break;
+                    case "4": DeletePlane(); break;
+                    case "5": running = false; break;
                     default:
                         Console.WriteLine("Invalid option.");
                         MenuHelpers.Wait();
@@ -507,10 +691,16 @@ namespace AirportManagement.Menus
         }
     }
 
+
     public class CrewMenu
     {
         private readonly CrewManager _manager;
-        public CrewMenu(CrewManager manager) { _manager = manager; }
+
+        public CrewMenu(CrewManager manager)
+        {
+            _manager = manager;
+        }
+
         private void AddCrewMember()
         {
             Console.Clear();
@@ -572,6 +762,7 @@ namespace AirportManagement.Menus
             Console.WriteLine($"\nCrew member '{firstName} {lastName}' added successfully!");
             MenuHelpers.Wait();
         }
+
         private void ListCrewMembers()
         {
             Console.Clear();
@@ -586,7 +777,127 @@ namespace AirportManagement.Menus
             {
                 foreach (var c in crew)
                 {
-                    Console.WriteLine($"{c.FirstName} {c.LastName}, {c.CrewPosition}, Born: {c.YearOfBirth}, Gender: {c.Gender}");
+                    Console.WriteLine($"{c.Id} | {c.FirstName} {c.LastName}, {c.CrewPosition}, Born: {c.YearOfBirth}, Gender: {c.Gender}");
+                }
+            }
+
+            MenuHelpers.Wait();
+        }
+
+        private CrewMember SelectCrewMember(List<CrewMember> available, string role)
+        {
+            while (true)
+            {
+                Console.Clear();
+                Console.WriteLine($"SELECT {role.ToUpper()}");
+
+                var filtered = available
+                    .Where(c =>
+                        (role == "Pilot" && c.CrewPosition == Position.Pilot) ||
+                        (role == "CoPilot" && c.CrewPosition == Position.CoPilot) ||
+                        (role == "Steward" &&
+                            (c.CrewPosition == Position.Steward || c.CrewPosition == Position.Stewardess)))
+                    .ToList();
+
+                if (filtered.Count == 0)
+                {
+                    Console.WriteLine($"No available {role}s!");
+                    return null;
+                }
+
+                for (int i = 0; i < filtered.Count; i++)
+                {
+                    var c = filtered[i];
+                    Console.WriteLine($"{i + 1} - {c.FirstName} {c.LastName} ({c.CrewPosition})");
+                }
+
+                Console.Write("Choose number (Enter to cancel): ");
+                string input = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(input)) return null;
+
+                if (!int.TryParse(input, out int index) || index < 1 || index > filtered.Count)
+                {
+                    Console.WriteLine("Invalid selection.");
+                    MenuHelpers.Wait();
+                    continue;
+                }
+
+                return filtered[index - 1];
+            }
+        }
+
+        private void CreateCrew()
+        {
+            Console.Clear();
+            Console.WriteLine("CREATE CREW");
+
+            var allMembers = _manager.GetAllCrewMembers();
+            var existingCrews = _manager.GetAllCrews();
+
+            var unavailable = existingCrews
+                .SelectMany(c => new[] { c.Pilot, c.CoPilot, c.Steward1, c.Steward2 })
+                .Where(m => m != null);
+
+            var available = allMembers.Except(unavailable).ToList();
+
+            if (available.Count == 0)
+            {
+                Console.WriteLine("No available crew members to form a crew!");
+                MenuHelpers.Wait();
+                return;
+            }
+
+            var pilot = SelectCrewMember(available, "Pilot");
+            if (pilot == null) return;
+            available.Remove(pilot);
+
+            var copilot = SelectCrewMember(available, "CoPilot");
+            if (copilot == null) return;
+            available.Remove(copilot);
+
+            var steward1 = SelectCrewMember(available, "Steward");
+            if (steward1 == null) return;
+            available.Remove(steward1);
+
+            var steward2 = SelectCrewMember(available, "Steward");
+            if (steward2 == null) return;
+            available.Remove(steward2);
+
+            var crew = new Crew
+            {
+                Pilot = pilot,
+                CoPilot = copilot,
+                Steward1 = steward1,
+                Steward2 = steward2
+            };
+
+            _manager.AddCrew(crew);
+
+            Console.WriteLine($"\nCrew '{crew.Name}' created successfully!");
+            MenuHelpers.Wait();
+        }
+
+        private void ListCrews()
+        {
+            Console.Clear();
+            Console.WriteLine("LIST OF CREWS");
+
+            var crews = _manager.GetAllCrews();
+
+            if (crews.Count == 0)
+            {
+                Console.WriteLine("No crews found.");
+            }
+            else
+            {
+                foreach (var c in crews)
+                {
+                    Console.WriteLine($"Crew ID: {c.Id} | Name: {c.Name}");
+                    Console.WriteLine($"  Pilot    : {c.Pilot.FirstName} {c.Pilot.LastName}");
+                    Console.WriteLine($"  CoPilot  : {c.CoPilot.FirstName} {c.CoPilot.LastName}");
+                    Console.WriteLine($"  Steward1 : {c.Steward1.FirstName} {c.Steward1.LastName}");
+                    Console.WriteLine($"  Steward2 : {c.Steward2.FirstName} {c.Steward2.LastName}");
+                    Console.WriteLine("---------------------------------------");
                 }
             }
 
@@ -596,17 +907,19 @@ namespace AirportManagement.Menus
         public void Show()
         {
             bool running = true;
+
             while (running)
             {
                 Console.Clear();
                 Console.WriteLine("CREW MENU");
                 Console.WriteLine("1 - Add Crew Member");
                 Console.WriteLine("2 - List Crew Members");
-                Console.WriteLine("3 - Back");
+                Console.WriteLine("3 - Create Crew");
+                Console.WriteLine("4 - List Crews");
+                Console.WriteLine("5 - Back");
                 Console.Write("Choice: ");
-                string choice = Console.ReadLine();
 
-                switch (choice)
+                switch (Console.ReadLine())
                 {
                     case "1":
                         AddCrewMember();
@@ -615,6 +928,12 @@ namespace AirportManagement.Menus
                         ListCrewMembers();
                         break;
                     case "3":
+                        CreateCrew();
+                        break;
+                    case "4":
+                        ListCrews();
+                        break;
+                    case "5":
                         running = false;
                         break;
                     default:
@@ -625,4 +944,5 @@ namespace AirportManagement.Menus
             }
         }
     }
+
 }

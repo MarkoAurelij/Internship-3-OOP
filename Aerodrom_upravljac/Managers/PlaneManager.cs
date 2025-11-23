@@ -17,6 +17,12 @@ namespace AirportManagement.Managers
             _db = db;
         }
 
+        public void RemovePlane(Plane plane)
+        {
+            _db.Planes.Remove(plane);
+        }
+
+
         public void AddPlane(Plane plane)
         {
             _db.Planes.Add(plane);

@@ -9,5 +9,7 @@ namespace AirportManagement.AppData
         public List<Flight> Flights { get; set; } = new();
         public List<Plane> Planes { get; set; } = new();
         public List<CrewMember> CrewMembers { get; set; } = new();
+        public List<Crew> Crews { get; set; } = new();
+
     }
 }

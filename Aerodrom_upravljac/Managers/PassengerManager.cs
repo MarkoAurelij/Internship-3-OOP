@@ -1,35 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using AirportManagement.AppData;
 using AirportManagement.Models;
-using AirportManagement.AppData;
 
-namespace AirportManagement.Managers
+public class PassengerManager
 {
-    public class PassengerManager
+    private readonly Database _db;
+
+    public PassengerManager(Database db)
     {
-        private readonly Database _db;
+        _db = db;
+    }
 
-        public PassengerManager() : this(new Database()) { }
+    public PassengerManager() : this(new Database()) { }
 
-        public PassengerManager(Database db)
-        {
-            _db = db;
-        }
+    public void AddPassenger(Passenger passenger)
+    {
+        _db.Passengers.Add(passenger);
+    }
 
-        public void AddPassenger(Passenger passenger)
-        {
-            _db.Passengers.Add(passenger);
-        }
+    public List<Passenger> GetAllPassengers()
+    {
+        return _db.Passengers;
+    }
 
-        public List<Passenger> GetAllPassengers()
-        {
-            return _db.Passengers;
-        }
-
-        public Passenger GetPassengerByEmail(string email)
-        {
-            return _db.Passengers.FirstOrDefault(p => p.Email == email);
-        }
+    public Passenger Login(string email, string password)
+    {
+        return _db.Passengers.FirstOrDefault(p =>
+            p.Email.Equals(email, StringComparison.OrdinalIgnoreCase) &&
+            p.Password == password);
     }
 }
