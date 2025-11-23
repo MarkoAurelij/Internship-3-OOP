@@ -122,6 +122,27 @@ namespace AirportManagement.Menus
             Console.WriteLine($"\nPassenger '{firstName} {lastName}' registered successfully!");
             MenuHelpers.Wait();
         }
+        private void ListPassengers()
+        {
+            Console.Clear();
+            Console.WriteLine("=== LIST OF PASSENGERS ===");
+
+            var passengers = _manager.GetAllPassengers();
+
+            if (passengers.Count == 0)
+            {
+                Console.WriteLine("No passengers found.");
+            }
+            else
+            {
+                foreach (var p in passengers)
+                {
+                    Console.WriteLine($"{p.FirstName} {p.LastName} (Born: {p.YearOfBirth}, Email: {p.Email})");
+                }
+            }
+
+            MenuHelpers.Wait();
+        }
 
         public void Show()
         {
@@ -142,7 +163,7 @@ namespace AirportManagement.Menus
                         RegisterPassenger();
                         break;
                     case "2":
-                        MenuHelpers.Wait();  // Placeholder for actual functionality
+                        ListPassengers();
                         break;
                     case "3":
                         running = false;
@@ -161,7 +182,92 @@ namespace AirportManagement.Menus
     {
         private readonly FlightManager _manager;
         public FlightMenu(FlightManager manager) { _manager = manager; }
+        private void AddFlight()
+        {
+            Console.Clear();
+            Console.WriteLine("=== ADD FLIGHT ===");
 
+            // Flight Name
+            Console.Write("Flight Name (Enter to cancel): ");
+            string name = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(name)) return;
+
+            // Origin
+            Console.Write("Origin (Enter to cancel): ");
+            string origin = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(origin)) return;
+
+            // Destination
+            Console.Write("Destination (Enter to cancel): ");
+            string destination = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(destination)) return;
+
+            // Departure
+            DateTime departure;
+            while (true)
+            {
+                Console.Write("Departure Date & Time (yyyy-MM-dd HH:mm) (Enter to cancel): ");
+                string depInput = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(depInput)) return;
+
+                if (!DateTime.TryParse(depInput, out departure))
+                {
+                    Console.WriteLine("Invalid format. Try again.");
+                    continue;
+                }
+                break;
+            }
+
+            DateTime arrival;
+            while (true)
+            {
+                Console.Write("Arrival Date & Time (yyyy-MM-dd HH:mm) (Enter to cancel): ");
+                string arrInput = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(arrInput)) return;
+
+                if (!DateTime.TryParse(arrInput, out arrival))
+                {
+                    Console.WriteLine("Invalid format. Try again.");
+                    continue;
+                }
+
+                if (arrival <= departure)
+                {
+                    Console.WriteLine("Arrival must be after departure.");
+                    continue;
+                }
+                break;
+            }
+
+            double distance;
+            while (true)
+            {
+                Console.Write("Distance in km (Enter to cancel): ");
+                string distInput = Console.ReadLine();
+                if (string.IsNullOrWhiteSpace(distInput)) return;
+
+                if (!double.TryParse(distInput, out distance) || distance <= 0)
+                {
+                    Console.WriteLine("Invalid distance. Must be positive number.");
+                    continue;
+                }
+                break;
+            }
+
+            Plane plane = null;
+            Console.WriteLine("Plane selection not implemented yet.");
+            MenuHelpers.Wait();
+
+            List<CrewMember> crew = new List<CrewMember>();
+            Console.WriteLine("Crew selection not implemented yet.");
+            MenuHelpers.Wait();
+
+            var flight = new Flight(name, origin, destination, departure, arrival, distance, plane, crew);
+            _manager.AddFlight(flight);
+
+            Console.WriteLine($"\nFlight '{name}' added successfully!");
+            MenuHelpers.Wait();
+        }
         public void Show()
         {
             bool running = true;
@@ -178,6 +284,8 @@ namespace AirportManagement.Menus
                 switch (choice)
                 {
                     case "1":
+                        AddFlight();
+                        break;
                     case "2":
                         MenuHelpers.Wait();
                         break;
