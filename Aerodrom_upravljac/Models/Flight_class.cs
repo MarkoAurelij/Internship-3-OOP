@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace AirportManagement.Models
 {
-    class Flight
+    public class Flight
     {
 
         public Guid Id { get; private set; }

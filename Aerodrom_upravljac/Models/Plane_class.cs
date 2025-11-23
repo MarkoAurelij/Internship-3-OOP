@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace AirportManagement.Models
 {
-    class Plane
+    public class Plane
     {
         public Guid Id { get; private set; }
         public string Name { get; set; }

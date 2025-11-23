@@ -10,7 +10,7 @@ namespace AirportManagement.Models
         Stewardess
     }
 
-    class CrewMember
+    public class CrewMember
     {
         public Guid Id { get; private set; }
         public string FirstName { get; set; }
