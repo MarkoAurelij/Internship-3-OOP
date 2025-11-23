@@ -1,10 +1,25 @@
-﻿namespace Aerodrom_upravljac
+﻿using System;
+using AirportManagement.Managers;
+using AirportManagement.Menus;
+
+namespace AirportManagement
 {
-    internal class Program
+    class Program
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello, World!");
+            // Initialize managers
+            var passengerManager = new PassengerManager();
+            var flightManager = new FlightManager();
+            var planeManager = new PlaneManager();
+            var crewManager = new CrewManager();
+
+
+            var mainMenu = new MainMenu(passengerManager, flightManager, planeManager, crewManager);
+            mainMenu.Show();
+
+            Console.WriteLine("\nExiting program. Press any key to close...");
+            Console.ReadKey();
         }
     }
 }

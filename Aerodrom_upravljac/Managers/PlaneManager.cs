@@ -10,6 +10,8 @@ namespace AirportManagement.Managers
     {
         private readonly Database _db;
 
+        public PlaneManager() : this(new Database()) { }
+
         public PlaneManager(Database db)
         {
             _db = db;
@@ -31,3 +33,4 @@ namespace AirportManagement.Managers
         }
     }
 }
+

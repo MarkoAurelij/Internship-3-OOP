@@ -10,6 +10,8 @@ namespace AirportManagement.Managers
     {
         private readonly Database _db;
 
+        public PassengerManager() : this(new Database()) { }
+
         public PassengerManager(Database db)
         {
             _db = db;
@@ -27,8 +29,7 @@ namespace AirportManagement.Managers
 
         public Passenger GetPassengerByEmail(string email)
         {
-            return _db.Passengers
-                .FirstOrDefault(p => p.Email.Equals(email, StringComparison.OrdinalIgnoreCase));
+            return _db.Passengers.FirstOrDefault(p => p.Email == email);
         }
     }
 }

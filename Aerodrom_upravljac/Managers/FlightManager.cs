@@ -10,6 +10,8 @@ namespace AirportManagement.Managers
     {
         private readonly Database _db;
 
+        public FlightManager() : this(new Database()) { }
+
         public FlightManager(Database db)
         {
             _db = db;
